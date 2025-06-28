@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, FlatList } from 'react-native';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../services/firebase';
-import { collection, doc, onSnapshot, addDoc, getDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { app, db } from '../services/firebase';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import { auth } from '../services/auth';
 import { sendInvite } from '../services/invites';
 
 export default function TeamSeats() {
   const [user, setUser] = useState(null);
   const [invites, setInvites] = useState([]);
+  const [seats, setSeats] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,10 +18,15 @@ export default function TeamSeats() {
     const unsub = onSnapshot(ref, (snap) => setUser(snap.data()));
     const iRef = collection(db, 'invites');
     const unsubI = onSnapshot(iRef, (snap) => {
-      const rows = snap.docs.filter(d => d.data().uid === auth.currentUser.uid).map(d => ({ id: d.id, ...d.data() }));
+      const rows = snap.docs.filter(d => d.data().uid === auth.currentUser.uid).map(d => ({ id: d.id, ...d.data(), status: 'Pending' }));
       setInvites(rows);
     });
-    return () => { unsub(); unsubI(); };
+    const sRef = collection(db, 'users', auth.currentUser.uid, 'seats');
+    const unsubS = onSnapshot(sRef, (snap) => {
+      const rows = snap.docs.map(d => ({ id: d.id, ...d.data(), status: 'Active' }));
+      setSeats(rows);
+    });
+    return () => { unsub(); unsubI(); unsubS(); };
   }, []);
 
   const invite = async (email) => {
@@ -33,14 +40,18 @@ export default function TeamSeats() {
         <Text>Plan: {user.subscriptionTier} {user.seatsUsed}/{user.seatsAllowed}</Text>
       )}
       <FlatList
-        data={invites}
+        data={[...seats, ...invites]}
         keyExtractor={(i) => i.id}
         renderItem={({ item }) => (
-          <Text>{item.email} - {item.status || 'Pending'}</Text>
+          <Text>{item.email} - {item.status}</Text>
         )}
       />
       <Button title="Invite" onPress={() => invite(prompt('Email'))} />
-      <Button title="Manage Billing" onPress={() => navigate('/billing')} />
+      <Button title="Manage Billing" onPress={async () => {
+        const fn = httpsCallable(getFunctions(app), 'billingPortal');
+        const res = await fn({ customerId: user.customerId, returnUrl: window.location.origin + '/team' });
+        window.location.href = res.data.url;
+      }} />
     </View>
   );
 }
