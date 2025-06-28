@@ -25,4 +25,4 @@ if (typeof enableIndexedDbPersistence === 'function') {
   }
 }
 
-export { db, AsyncStorage };
+export { app, db, AsyncStorage };

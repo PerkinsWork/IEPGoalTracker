@@ -5,3 +5,10 @@ jest.mock(
   '@react-native-async-storage/async-storage',
   () => require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
+
+process.env.FIREBASE_API_KEY = 'test';
+process.env.FIREBASE_AUTH_DOMAIN = 'test';
+process.env.FIREBASE_PROJECT_ID = 'test';
+process.env.FIREBASE_STORAGE_BUCKET = 'test';
+process.env.FIREBASE_MESSAGING_SENDER_ID = 'test';
+process.env.FIREBASE_APP_ID = 'test';
