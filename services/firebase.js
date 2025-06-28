@@ -14,9 +14,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Enable offline persistence with indexedDB
-enableIndexedDbPersistence(db).catch(() => {
-  /* ignore persistence errors */
-});
+// Enable offline persistence with indexedDB if available. In tests, the
+// Firestore module is often mocked so this function may be undefined.
+if (typeof enableIndexedDbPersistence === 'function') {
+  try {
+    // ignore any persistence errors, e.g. running in an unsupported environment
+    enableIndexedDbPersistence(db).catch(() => {});
+  } catch (e) {
+    /* noop */
+  }
+}
 
 export { db, AsyncStorage };
